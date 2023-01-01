@@ -8,7 +8,10 @@
 
 #define PIPE_NAME "my_named_pipe"
 #define PIPE_NAME2 "my_named_pipe2"
-
+#define PIPE_NAME_CREATE "my_named_create"
+#define PIPE_NAME_DELETE "my_named_delete"
+#define PIPE_NAME_EXIT "my_named_exit"
+#define PIPE_NAME_WRITE "my_named_write"
 #define BUFFER_SIZE 1024
 //char array size return;
 int size_char(char *array);
@@ -22,6 +25,11 @@ int charIsEmpty(char *str);
 pthread_mutex_t mutex;
 int fd;
 int fd2;
+int fd_write;
+int fd_create;
+int fd_delete;
+int fd_exit;
+
  char* buffer ;
 void *create_file(void *arg)
 {   
@@ -29,7 +37,7 @@ void *create_file(void *arg)
    // Read from the named pipe and print the data to the console
   while (1) {
     
-    ssize_t bytes_read = read(fd, buffer, BUFFER_SIZE);
+    ssize_t bytes_read = read(fd_create, buffer, BUFFER_SIZE);
       pthread_mutex_lock(&mutex); 
        
     
@@ -76,7 +84,7 @@ void *create_file(void *arg)
         fd2 = open(PIPE_NAME2, O_WRONLY);
           if (fd2 < 0) {
             perror("open");
-            return 1;
+            return 0;
           } 
        ssize_t bytes_written = write(fd2, buffer, bufferSize);
        if (bytes_written < 0)
@@ -103,7 +111,72 @@ void *create_file(void *arg)
 void *delete_file(void *arg)
 {
     printf("delete file komutu dinlemeye başladi\n");
+   // Read from the named pipe and print the data to the console
+  while (1) {
+    
+    ssize_t bytes_read = read(fd_delete, buffer, BUFFER_SIZE);
+      pthread_mutex_lock(&mutex); 
+       
+    
+    if (bytes_read < 0) {
+      perror("read");
+      break;
+    }
+    if (bytes_read == 0) {
+      break;
+    }
+    char command[BUFFER_SIZE];
+    //printf("buffer: %s",buffer);
+   char *splitBuffer[200] = {NULL};
+        
+    splitP(buffer,splitBuffer," ");
+    sscanf(buffer, "%s", command);
+    //printf("buffer: %s %d",buffer,bytes_read);
 
+
+    char *fileName="yeni.txt";
+     if(strcmp(command,"delete")==0){
+       
+       int i=0;
+       while(splitBuffer[i]!=NULL){
+         // printf("create command %s \n",splitBuffer[i]);
+          i++;
+          if(i==1){
+            fileName=splitBuffer[i];
+          }
+       }
+
+       printf("filename: %s", fileName);
+       FILE *fp;
+       fp = fopen(fileName, "a+");
+       fclose(fp);
+      
+       sprintf(buffer, "%s adli file_olusturuldu", fileName);
+
+       // cevap gönderme başlangıç
+       printf("buray akadar geldi\n");
+       int bufferSize = size_char(buffer);
+       printf("buffer : %s  buffer boyu %d \n", buffer, bufferSize);
+       //fwrite(buffer, 1, bufferSize, stdout);
+        fd2 = open(PIPE_NAME2, O_WRONLY);
+          if (fd2 < 0) {
+            perror("open");
+            return 0;
+          } 
+       ssize_t bytes_written = write(fd2, buffer, bufferSize);
+       if (bytes_written < 0)
+       {
+          perror("write");
+          break;
+       } // cevap gönderme bitiş
+       close(fd2);
+
+       
+      printf("delete file komutundan cikis yapildi\n");
+     }
+ 
+     pthread_mutex_unlock(&mutex);
+  }
 
   // dosya oluşturma işlemini kilitleyin
     printf("delete file\n");
@@ -142,26 +215,57 @@ int main(int argc, char** argv) {
  
 
   
-    buffer = malloc(BUFFER_SIZE);
+
 
 
     char * myfifo = PIPE_NAME;
     char * myfifo2 = PIPE_NAME2;
+    char * myfifocreate = PIPE_NAME_CREATE;
+    char * myfifodelete = PIPE_NAME_DELETE;
+    char * myfifoexit= PIPE_NAME_EXIT;
+    char * myfifowrite = PIPE_NAME_WRITE;
+
     mkfifo(myfifo, 0666);
     mkfifo(myfifo2, 0666);
+    mkfifo(myfifocreate, 0666);
+    mkfifo(myfifodelete, 0666);
+    mkfifo(myfifoexit, 0666);
+    mkfifo(myfifowrite, 0666);
   // Open the named pipe for reading
   fd = open(PIPE_NAME, O_RDONLY);
   if (fd < 0) {
     perror("open");
     return 1;
   }
+   fd_create = open(PIPE_NAME_CREATE, O_RDONLY);
+  if (fd < 0) {
+    perror("open");
+    return 1;
+  }
+   fd_delete = open(PIPE_NAME_DELETE, O_RDONLY);
+  if (fd < 0) {
+    perror("open");
+    return 1;
+  }
+   fd_exit = open(PIPE_NAME_EXIT, O_RDONLY);
+  if (fd < 0) {
+    perror("open");
+    return 1;
+  }
+   fd_write= open(PIPE_NAME_WRITE, O_RDONLY);
+  if (fd < 0) {
+    perror("open");
+    return 1;
+  }
+
   fd2 = open(PIPE_NAME2, O_WRONLY);
   if (fd2 < 0) {
     perror("open");
     return 1;
   }
+  printf("all pipe open");
   // Allocate a buffer for reading from the named pipe
- 
+     buffer = malloc(BUFFER_SIZE);
   if (buffer == NULL) {
     perror("malloc");
     return 1;
