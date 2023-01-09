@@ -1,4 +1,5 @@
 # FİLE MANAGMENT SYSTEM WİTH PİPE_NAMED AND THREADS
+- Run make on terminal
 * First must be work file_manager.c after than run file_client
 
 ## Make Apps
